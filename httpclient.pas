@@ -18,7 +18,7 @@ uses
   public
     procedure addHeader(key,value:string);
     procedure removeHeader(key:string);
-    function get(path: String):TJSONObject;
+    function get(path: String):TJSONData;
     property allowRedirect: boolean read fAllowRedirect write fAllowRedirect;
     property headers: THeaders read fHeaders;
     property baseUrl: String read fBaseUrl write fBaseUrl;
@@ -29,7 +29,7 @@ implementation
 
 { THttpClient }
 
-function THttpClient.get(path: String): TJSONObject;
+function THttpClient.get(path: String): TJSONData;
 Var
   HTTP : TFPHttpClient;
   headerNo: integer;
@@ -46,8 +46,7 @@ begin
       HTTP.AddHeader(headerKey, headerValue);
     end;
   try
-    jsonData := GetJSON(HTTP.Get(baseUrl+path));
-    result.Add('results',TJSONObject(jsonData));
+    result := GetJSON(HTTP.Get(baseUrl+path));
   finally
     http.free;
   end;

@@ -37,12 +37,27 @@
         <Filename Value="ynot.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="Form1"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit>
       <Unit>
         <Filename Value="ynabapi.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="ynabApi"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ynab.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Ynab"/>
+      </Unit>
+      <Unit>
+        <Filename Value="plan.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ynabresponse.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ynabResponse"/>
       </Unit>
     </Units>
   </ProjectOptions>
