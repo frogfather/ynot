@@ -59,6 +59,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="ynabResponse"/>
       </Unit>
+      <Unit>
+        <Filename Value="queryparam.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="queryParam"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

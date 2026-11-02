@@ -5,7 +5,7 @@ unit httpClient;
 interface
 
 uses
-  Classes, SysUtils, fpjson, jsonparser, fphttpclient, opensslsockets,header;
+  Classes, SysUtils, fpjson, jsonparser, fphttpclient, opensslsockets,header,queryParam;
   type
 
   { THttpClient }
@@ -15,12 +15,14 @@ uses
     fBaseUrl: String;
     fAllowRedirect: Boolean;
     fHeaders: THeaders;
+    fQueryParams: TQueryParams;
   public
     procedure addHeader(key,value:string);
     procedure removeHeader(key:string);
     function get(path: String):TJSONData;
     property allowRedirect: boolean read fAllowRedirect write fAllowRedirect;
     property headers: THeaders read fHeaders;
+    property queryParams: TQueryParams read fQueryParams;
     property baseUrl: String read fBaseUrl write fBaseUrl;
   end;
 
@@ -35,6 +37,7 @@ Var
   headerNo: integer;
   headerKey, headerValue: String;
   jsonData: TJSONData;
+  queryUrl:string;
 begin
   result:= TJSONObject.Create;
   HTTP := TFPHttpClient.Create(nil);
@@ -45,8 +48,11 @@ begin
       headerValue := headers[headerNo].value;
       HTTP.AddHeader(headerKey, headerValue);
     end;
+  queryUrl:=baseUrl+path;
+  if (queryParams.size > 0) then queryUrl:=queryUrl+'?'+queryParams.toString;
+  writeln('Get query '+queryUrl);
   try
-    result := GetJSON(HTTP.Get(baseUrl+path));
+    result := GetJSON(HTTP.Get(queryUrl));
   finally
     http.free;
   end;
