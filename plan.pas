@@ -7,7 +7,7 @@ unit plan;
 interface
 
 uses
-  Classes, SysUtils,fpjson;
+  Classes, SysUtils,fpjson,categoryGroup;
 
 type
 
@@ -17,13 +17,17 @@ type
     private
     fName: string;
     fId:string;
-    fServerKnowledge:string;
+    fPlanServerKnowledge:string;
+    fCatGroupsServerKnowledge:string;
+    fCategoryGroups: TCategoryGroups;
     public
     constructor create(name_,id_:string);
     constructor create(plan_data_:TJSONData);
     property name: string read fName;
     property id: string read fId;
-    property serverKnowledge: String read fServerKnowledge write fServerKnowledge;
+    property categoryGroups:TCategoryGroups read fCategoryGroups;
+    property planServerKnowledge: String read fPlanServerKnowledge write fPlanServerKnowledge;
+    property catGroupsServerKnowledge: string read fCatGroupsServerKnowledge write fCatGroupsServerKnowledge;
   end;
 
   { TPlans }

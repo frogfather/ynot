@@ -64,6 +64,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="queryParam"/>
       </Unit>
+      <Unit>
+        <Filename Value="categorygroup.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="categoryGroup"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
