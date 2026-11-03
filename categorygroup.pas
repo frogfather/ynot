@@ -17,14 +17,12 @@ type
   private
   fName:string;
   fId:string;
-  fServerKnowledge:string;
   fCategories:TCategories;
   public
   constructor create(name_,id_:string);
   property name: string read fName;
   property id: string read fId;
   property categories: TCategories read fCategories;
-  property serverKnowledge: String read fServerKnowledge write fServerKnowledge;
   end;
 
   TCategoryGroups = array of TCategoryGroup;

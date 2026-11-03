@@ -25,7 +25,7 @@ type
     constructor create(plan_data_:TJSONData);
     property name: string read fName;
     property id: string read fId;
-    property categoryGroups:TCategoryGroups read fCategoryGroups;
+    property categoryGroups:TCategoryGroups read fCategoryGroups write fCategoryGroups;
     property planServerKnowledge: String read fPlanServerKnowledge write fPlanServerKnowledge;
     property catGroupsServerKnowledge: string read fCatGroupsServerKnowledge write fCatGroupsServerKnowledge;
   end;
@@ -40,6 +40,8 @@ type
   function push(element:TPlan):integer;
   function indexOf(element:TPlan):integer;
   function findByName(elementName:string):TPlan;
+  function findById(elementId:String):TPlan;
+  procedure deleteByIndex(index:integer);
   procedure clear;
   end;
 
@@ -87,6 +89,34 @@ begin
           exit;
         end;
     end;
+end;
+
+function TPlanHelper.findById(elementId: String): TPlan;
+var
+  index: integer;
+begin
+  result:=nil;
+  if (self = nil) or (self.size = 0) then exit; //These are the same thing!
+  for index:= 0 to pred(self.size) do
+    begin
+      if (Self[index].id = elementId) then
+        begin
+          result:=self[index];
+          exit;
+        end;
+    end;
+end;
+
+procedure TPlanHelper.deleteByIndex(index:integer);
+var
+  currentPos:integer;
+begin
+  if (index > -1) then
+  begin
+    for currentPos:=index to pred(self.size) do
+      if (currentPos < pred(self.size)) then self[currentPos]:= self[currentPos+1];
+    setLength(Self,length(self)-1);
+  end;
 end;
 
 procedure TPlanHelper.clear;

@@ -19,7 +19,11 @@ uses
   public
     procedure addHeader(key,value:string);
     procedure removeHeader(key:string);
+    procedure addQueryParam(key_,value_:string);
+    procedure removeQueryParam(key_:string);
     function get(path: String):TJSONData;
+    constructor create;
+    constructor create(baseUrl_:string;allowRedirect_:boolean=true;headers_:THeaders=nil;queryParams_:TQueryParams=nil);
     property allowRedirect: boolean read fAllowRedirect write fAllowRedirect;
     property headers: THeaders read fHeaders;
     property queryParams: TQueryParams read fQueryParams;
@@ -59,6 +63,22 @@ begin
 
 end;
 
+constructor THttpClient.create;
+begin
+  fBaseUrl:='';
+  fAllowRedirect:=true;
+  fHeaders:=THeaders.create;
+  fQueryParams:=TQueryParams.create;
+end;
+
+constructor THttpClient.create(baseUrl_:string;allowRedirect_:boolean=true;headers_:THeaders=nil;queryParams_:TQueryParams=nil);
+begin
+  fBaseUrl:=baseUrl_;
+  fAllowRedirect:=allowRedirect_;
+  if assigned(headers_) then fHeaders:=headers_ else fHeaders:=THeaders.create;
+  if assigned(queryParams_) then fQueryParams:=queryParams_ else fQueryParams:= TQueryParams.create;
+end;
+
 procedure THttpClient.addHeader(key, value: string);
 var
   existingHeader:THeader;
@@ -75,6 +95,25 @@ var
 begin
   existingHeader:=headers.findByKey(key);
   if existingHeader <> nil then headers.delete(existingHeader);
+end;
+
+procedure THttpClient.addQueryParam(key_, value_: string);
+var
+  existingQueryParam:TQueryParam;
+begin
+  existingQueryParam:=queryParams.findByName(key_);
+  if not assigned(existingQueryParam)
+     then queryParams.push(TQueryParam.create(key_,value_))
+     else existingQueryParam.paramValue:=value_;
+end;
+
+procedure THttpClient.removeQueryParam(key_: string);
+var
+  existingQueryParam:TQueryParam;
+begin
+  existingQueryParam:=queryParams.findByName(key_);
+  if assigned(existingQueryParam)
+     then queryParams.delete(existingQueryParam);
 end;
 
 end.

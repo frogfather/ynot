@@ -20,7 +20,7 @@ type
   public
   constructor create(paramName_,paramValue_:String);
   property paramName: string read fParamName;
-  property paramValue: string read fParamValue;
+  property paramValue: string read fParamValue write fParamValue;
   end;
 
   { TQueryParams }
@@ -33,6 +33,7 @@ type
   function indexOf(element:TQueryParam):integer;
   function push(element:TQueryParam):integer;
   function findByName(elementName:string):TQueryParam;
+  procedure delete(queryParam_:TQueryParam);
   procedure clear;
   function toString:String;
   end;
@@ -89,6 +90,19 @@ begin
           exit;
         end;
     end;
+end;
+
+procedure TQueryParamsHelper.delete(queryParam_: TQueryParam);
+var
+  itemAt, index:integer;
+begin
+  itemAt:=self.indexOf(queryParam_);
+  if (itemAt > -1) then
+  begin
+    for index:=itemAt to pred(self.size) do
+      if (index < pred(self.size)) then self[index]:= self[index+1];
+    setLength(Self,length(self)-1);
+  end;
 end;
 
 procedure TQueryParamsHelper.clear;

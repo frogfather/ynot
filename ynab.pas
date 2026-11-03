@@ -21,6 +21,8 @@ type
     procedure fromXML;
     procedure updateData;
     function getPlansFromServer:TJSONArray;
+    function getCategoriesFromServer(plan:TPlan):TJSONArray;
+    function groupIsValid(catGroupObject_:TJSONObject):boolean;
     public
     constructor create(apiToken_,dataFile_:String);
     function loadFromFile(fileName_:String):Boolean;
@@ -87,20 +89,60 @@ begin
 
 end;
 
-//Call various apis to update the current data
-//plans doesn't have a server_knowledge property
 procedure TYnab.updateData;
 var
-  currentPlans:TJSONArray;
-  index:integer;
+  currentPlansList,categoryGroupList,categoryList:TJSONArray;
+  currentCatGroupObject,currentCategoryObject:TJSONObject;
+  index,catGroupIndex,categoryIndex:integer;
+  retrievedPlans:TPlans;
+  retrievedCategoryGroups:TCategoryGroups;
+  newCategoryGroup:TCategoryGroup;
+  newCategory:TCategory;
 begin
-  currentPlans:=getPlansFromServer;
-  if (currentPlans.Count <> fPlans.size) then
+  retrievedPlans:=TPlans.create;
+  currentPlansList:=getPlansFromServer;
+  if not assigned(currentPlansList) then
     begin
-    //replace with current data
-    fPlans.clear;
-    for index:=0 to pred(currentPlans.Count) do
-      fPlans.push(TPlan.create(currentPlans[index]));
+    //log an error and exit for now
+    writeln('Retrieval of plans failed');
+    exit;
+    end;
+  for index:=0 to pred(currentPlansList.Count) do
+    retrievedPlans.push(TPlan.create(currentPlansList[index]));
+  //Add missing
+  for index:=0 to pred(retrievedPlans.size) do
+    if (Plans.findById(retrievedPlans[index].id) = nil)
+       then Plans.push(retrievedPlans[index]);
+  //Remove deleted
+  for index:=0 to pred(Plans.size) do
+    if not assigned(retrievedPlans.findById(Plans[index].id))
+       then Plans.deleteByIndex(index);
+  //Get categories for each plan
+  for index:=0 to pred(Plans.size) do
+    begin
+    //Get category groups: a JSON array containing category groups and their subcategories
+    retrievedCategoryGroups:=TCategoryGroups.create;
+    categoryGroupList:=getCategoriesFromServer(Plans[index]);
+    //For each category group that isn't hidden,internal or deleted
+    //See if we already have a record of it
+    if assigned(categoryGroupList) then
+      for catGroupIndex:=0 to pred(categoryGroupList.Count) do
+      begin
+      currentCatGroupObject:=TJSONObject(categoryGroupList[catGroupIndex]);
+      if (groupIsValid(currentCatGroupObject)) then
+        begin
+        newCategoryGroup:=TCategoryGroup.create(currentCatGroupObject.Get('name'),currentCatGroupObject.Get('id'));
+        categoryList:=currentCatGroupObject.Arrays['categories'];
+        for categoryIndex:=0 to pred(categoryList.Count) do
+          begin
+          currentCategoryObject:=TJSONObject(categoryList[categoryIndex]);
+          newCategory:=TCategory.create(currentCategoryObject.Get('name'),currentCategoryObject.Get('id'),currentCategoryObject.Get('budgeted'),currentCategoryObject.Get('activity'));
+          newCategoryGroup.categories.push(newCategory);
+          end;
+        retrievedCategoryGroups.push(newCategoryGroup);
+        end;
+      end;
+    plans[index].categoryGroups:=retrievedCategoryGroups;
     end;
 end;
 
@@ -114,12 +156,41 @@ begin
   if (getPlansResponse.success = true) then
     begin
     result:=TJSONObject(getPlansResponse.results).Arrays['plans'];
-    //Add any missing plans
     end else
     begin
-    result:=TJSONArray.Create;
+    result:=nil;
     end;
+end;
 
+function TYnab.getCategoriesFromServer(plan:TPlan): TJSONArray;
+var
+  ynabApi: TYnabApi;
+  getCategoriesResponse:TYnabResponse;
+begin
+  ynabApi:=TYNABApi.create(fApiToken);
+  getCategoriesResponse:=ynabApi.getCategories(plan.catGroupsServerKnowledge);
+  if (getCategoriesResponse.success = true) then
+    begin
+    result:=TJSONObject(getCategoriesResponse.results).Arrays['category_groups'];
+    end else
+    begin
+    result:=nil;
+    end;
+end;
+
+function TYnab.groupIsValid(catGroupObject_: TJSONObject): boolean;
+begin
+  result:=false;
+  if (catGroupObject_.IndexOfName('hidden') > -1)
+     and not (catGroupObject_.FindPath('hidden').IsNull)
+     and (catGroupObject_.Get('hidden') = 'true') then exit;
+  if (catGroupObject_.IndexOfName('internal') > -1)
+     and not (catGroupObject_.FindPath('internal').IsNull)
+     and (catGroupObject_.Get('internal') = 'true') then exit;
+  if (catGroupObject_.IndexOfName('deleted') > -1)
+     and not (catGroupObject_.FindPath('deleted').IsNull)
+     and (catGroupObject_.Get('deleted') = 'true') then exit;
+  result:=true;
 end;
 
 constructor TYnab.create(apiToken_,dataFile_: String);
