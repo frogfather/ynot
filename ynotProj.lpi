@@ -69,6 +69,10 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="categoryGroup"/>
       </Unit>
+      <Unit>
+        <Filename Value="category.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

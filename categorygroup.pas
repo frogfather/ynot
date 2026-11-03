@@ -7,7 +7,7 @@ unit categoryGroup;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils,category;
 
 type
   
@@ -18,10 +18,12 @@ type
   fName:string;
   fId:string;
   fServerKnowledge:string;
+  fCategories:TCategories;
   public
   constructor create(name_,id_:string);
   property name: string read fName;
   property id: string read fId;
+  property categories: TCategories read fCategories;
   property serverKnowledge: String read fServerKnowledge write fServerKnowledge;
   end;
 

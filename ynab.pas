@@ -5,7 +5,7 @@ unit Ynab;
 interface
 
 uses
-  Classes, SysUtils,fpjson,xml_doc_handler,laz2_DOM,ynabApi,plan,ynabResponse,categoryGroup;
+  Classes, SysUtils,fpjson,xml_doc_handler,laz2_DOM,ynabApi,plan,ynabResponse,categoryGroup,category;
 
 type
   
@@ -37,7 +37,7 @@ implementation
 //Only save data for plans that are active
 procedure TYnab.toXML;
 var
-  planIndex,catGroupindex:integer;
+  planIndex,catGroupindex,categoryIndex:integer;
   plansNode,planNode,categoryGroupsNode,categoryGroupNode,categoriesNode,categoryNode:TDOMNode;
   planAttributes,categoryGroupsAttributes:TStringArray;
 begin
@@ -64,9 +64,18 @@ begin
         categoryGroupNode:=createNode('categoryGroup','');
         categoryGroupNode.AppendChild(createNode('name',fplans[planIndex].categoryGroups[catGroupIndex].name));
         categoryGroupNode.AppendChild(createNode('id',fplans[planIndex].categoryGroups[catGroupIndex].id));
+        categoryGroupNode.AppendChild(createNode('categories',''));
+        for categoryIndex:= 0 to pred(fplans[planIndex].categoryGroups[catGroupIndex].categories.size) do
+          begin
+          categoryNode:=createNode('category','');
+          categoryNode.AppendChild(createNode('name',fplans[planIndex].categoryGroups[catGroupIndex].categories[categoryIndex].name));
+          categoryNode.AppendChild(createNode('id',fplans[planIndex].categoryGroups[catGroupIndex].categories[categoryIndex].id));
+          categoryNode.AppendChild(createNode('budgeted',fplans[planIndex].categoryGroups[catGroupIndex].categories[categoryIndex].budgeted.ToString));
+          categoryNode.AppendChild(createNode('activity',fplans[planIndex].categoryGroups[catGroupIndex].categories[categoryIndex].activity.ToString));
+          categoryGroupNode.AppendChild(categoryNode);
+          end;
         categoryGroupsNode.AppendChild(categoryGroupNode);
         end;
-
       planNode.AppendChild(categoryGroupsNode);
       plansNode.AppendChild(planNode);
       end;
