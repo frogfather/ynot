@@ -154,6 +154,7 @@ var
   retrievedCategoryGroups:TCategoryGroups;
   newCategoryGroup:TCategoryGroup;
   newCategory:TCategory;
+  planServerKnowledge,catGroupsServerKnowledge:string;
 begin
   retrievedPlans:=TPlans.create;
   currentPlansResponse:=getPlansFromServer;
@@ -181,12 +182,16 @@ begin
       //log an error
       break;
       end;
-    if currentPlanResponse.serverKnowledge = plans[index].planServerKnowledge then
+    if assigned(currentPlanResponse.results.FindPath('server_knowledge')) then
       begin
-      //Log that the plan has not changed
-      break;
+        planServerKnowledge:=currentPlanResponse.results.GetPath('server_knowledge').AsString;
+        if (plans[index].planServerKnowledge = planServerKnowledge) then
+        begin
+        //Log that the plan has not changed
+        break;
+        end;
       end;
-    plans[index].planServerKnowledge:=currentPlanResponse.serverKnowledge;
+    plans[index].planServerKnowledge:=planServerKnowledge;
     //If the server knowledge has changed we need to update the categories for the plan
     categoryGroupsResponse:=getCategoriesFromServer(Plans[index]);
     if (categoryGroupsResponse.success = false) then
@@ -194,12 +199,16 @@ begin
       //log an error and move on to next plan
       break;
       end;
-    if categoryGroupsResponse.serverKnowledge = plans[index].catGroupsServerKnowledge then
+    if assigned(categoryGroupsResponse.results.FindPath('server_knowledge')) then
       begin
-      //Log that category groups have not changed
-      break;
+      catGroupsServerKnowledge:=categoryGroupsResponse.results.GetPath('server_knowledge').AsString;
+    if catGroupsServerKnowledge = plans[index].catGroupsServerKnowledge then
+        begin
+        //Log that category groups have not changed
+        break;
+        end;
       end;
-    plans[index].catGroupsServerKnowledge:=categoryGroupsResponse.serverKnowledge;
+    plans[index].catGroupsServerKnowledge:=catGroupsServerKnowledge;
     retrievedCategoryGroups:=TCategoryGroups.create;
     categoryGroupList:=TJSONObject(categoryGroupsResponse.results).Arrays['category_groups'];
     //For each category group that isn't hidden,internal or deleted

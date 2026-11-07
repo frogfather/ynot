@@ -12,9 +12,7 @@ type
   { TForm1 }
 
   TForm1 = class(TForm)
-    Button1: TButton;
     lbPlans: TListBox;
-    procedure Button1Click(Sender: TObject);
     procedure FormShow(Sender: TObject);
   private
 
@@ -50,9 +48,7 @@ begin
           then token:=fileLines[index].Split(',')[1];
       end;
     if (token <> '') then
-      begin
-      fYnab:=TYnab.create(token,dataFile);
-      end else
+      fYnab:=TYnab.create(token,dataFile) else
       begin
       messagedlg('','No api token found. Set API token',mtError,[mbOK],'');
       //Exit at this point, but allow user to enter token
@@ -61,22 +57,6 @@ begin
     end;
 end;
 
-procedure TForm1.Button1Click(Sender: TObject);
-var
-  planList:TPlans;
-  plan:TPlan;
-  arrPos:Integer;
-begin
-  //Call plans
-  planList:=fYnab.plans;
-  lbPlans.Clear;
-  if (planList.size > 0) then
-    for arrPos:=0 to pred(planList.size) do
-    begin
-    plan:=planList[arrPos];
-    lbPlans.Items.Add(plan.name);
-    end;
-end;
 
 end.
 
