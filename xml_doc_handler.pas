@@ -26,8 +26,8 @@ type
     procedure addAttributes(node:TDOMNode; attributes: TStringArray);
     procedure addTextValue(node:TDOMNode; textValue:string);
     public
-    constructor create;
-    procedure initializeDoc;
+    constructor create(name_:string);
+    procedure initializeDoc(name_:string);
     procedure setDocument(doc:TXMLDocument);
     function createNode(
       nodeName:string;
@@ -181,15 +181,15 @@ begin
   if (foundNode <> nil) then result:= foundNode.Attributes;
 end;
 
-constructor TXMLDocumentHandler.create;
+constructor TXMLDocumentHandler.create(name_:string);
 begin
-  initializeDoc;
+  initializeDoc(name_);
 end;
 
-procedure TXMLDocumentHandler.initializeDoc;
+procedure TXMLDocumentHandler.initializeDoc(name_:string);
 begin
   fDocument:=TXMLDocument.Create;
-  fDocument.AppendChild(fDocument.CreateElement('git-what'));
+  fDocument.AppendChild(fDocument.CreateElement(name_));
 end;
 
 

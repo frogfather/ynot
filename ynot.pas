@@ -47,8 +47,9 @@ begin
         if (fileLines[index].Split(',')[0] = 'ApiToken')
           then token:=fileLines[index].Split(',')[1];
       end;
+
     if (token <> '') then
-      fYnab:=TYnab.create(token,dataFile) else
+      fYnab:=TYnab.create(token,getUserDir+dataFile) else
       begin
       messagedlg('','No api token found. Set API token',mtError,[mbOK],'');
       //Exit at this point, but allow user to enter token

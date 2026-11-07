@@ -14,6 +14,7 @@ type
   TYnab = class(TInterfacedObject)
     private
     fXMLDocumentHandler:TXMLDocumentHandler;
+    fDataFile:string;
     fApiToken:String;
     fPlans:TPlans;
     fCurrentPlan:TPlan;
@@ -29,6 +30,7 @@ type
     function loadFromFile(fileName_:String):Boolean;
     function saveToFile(fileName_:String):Boolean;
     property xmlDocumentHandler:TXMLDocumentHandler read fXMLDocumentHandler;
+    property dataFile:string read fDataFile;
     property plans:TPlans read fPlans;
     property currentPlan:TPlan read fcurrentPlan write fCurrentPlan;
   end;
@@ -41,8 +43,9 @@ implementation
 procedure TYnab.toXML;
 var
   planIndex,catGroupindex,categoryIndex:integer;
-  plansNode,planNode,categoryGroupsNode,categoryGroupNode,categoriesNode,categoryNode:TDOMNode;
+  plansNode,planNode,categoryGroupsNode,categoryGroupNode,categoryNode:TDOMNode;
   planAttributes,categoryGroupsAttributes:TStringArray;
+  currentPlanId:string;
 begin
   planAttributes:=TStringArray.create;
   categoryGroupsAttributes:=TStringArray.create;
@@ -52,8 +55,8 @@ begin
   categoryGroupsAttributes[0]:='server_knowledge';
   with xmlDocumentHandler do
     begin
-    initializeDoc;
-    addNode('','current-plan',currentPlan.id);
+    if assigned(currentPlan) then currentPlanId:=currentPlan.id else currentPlanId:='';
+    addNode('','current-plan',currentPlanId);
     plansNode:=addNode('','plans');
     for planIndex:=0 to pred(fPlans.size) do
       begin
@@ -155,7 +158,9 @@ var
   newCategoryGroup:TCategoryGroup;
   newCategory:TCategory;
   planServerKnowledge,catGroupsServerKnowledge:string;
+  retrievalOK:boolean;
 begin
+  retrievalOK:=true;
   retrievedPlans:=TPlans.create;
   currentPlansResponse:=getPlansFromServer;
   if (currentPlansResponse.success = false) then
@@ -180,6 +185,7 @@ begin
     if (currentPlanResponse.success = false) then
       begin
       //log an error
+      retrievalOK:=false;
       break;
       end;
     if assigned(currentPlanResponse.results.FindPath('server_knowledge')) then
@@ -231,6 +237,7 @@ begin
       end;
     plans[index].categoryGroups:=retrievedCategoryGroups;
     end;
+  if retrievalOK then saveToFile(dataFile);
 end;
 
 function TYnab.getPlansFromServer: TYNABResponse;
@@ -259,27 +266,34 @@ begin
 end;
 
 function TYnab.groupIsValid(catGroupObject_: TJSONObject): boolean;
+var
+  groupName:string;
 begin
   result:=false;
+  groupName:=catGroupObject_.Get('name');
+  writeln(groupName);
   if (catGroupObject_.IndexOfName('hidden') > -1)
      and not (catGroupObject_.FindPath('hidden').IsNull)
-     and (catGroupObject_.Get('hidden') = 'true') then exit;
+     and (catGroupObject_.Get('hidden',false) = true) then exit;
+
   if (catGroupObject_.IndexOfName('internal') > -1)
      and not (catGroupObject_.FindPath('internal').IsNull)
-     and (catGroupObject_.Get('internal') = 'true') then exit;
+     and (catGroupObject_.Get('internal',false) = true) then exit;
+
   if (catGroupObject_.IndexOfName('deleted') > -1)
      and not (catGroupObject_.FindPath('deleted').IsNull)
-     and (catGroupObject_.Get('deleted') = 'true') then exit;
+     and (catGroupObject_.Get('deleted',false) = true) then exit;
   result:=true;
 end;
 
 constructor TYnab.create(apiToken_,dataFile_: String);
 begin
-  fXMLDocumentHandler:=TXMLDocumentHandler.create;
+  fXMLDocumentHandler:=TXMLDocumentHandler.create('ynot');
   fApiToken:=apiToken_;
   //Set to empty values in case there's no data file.
   fPlans:=TPlans.create;
   fCurrentPlan:=nil;
+  fDataFile:=dataFile_;
   //Call various apis based on server_knowledge
   loadFromFile(dataFile_);
   updateData;
@@ -299,12 +313,9 @@ end;
 function TYnab.saveToFile(fileName_: String): Boolean;
 begin
   result:=false;
-  if fileExists(fileName_) then
-    begin
-    toXML;
-    xmlDocumentHandler.save(fileName_);
-    result:=true;
-    end;
+  toXML;
+  xmlDocumentHandler.save(fileName_);
+  result:=true;
 end;
 
 end.
