@@ -30,7 +30,7 @@ type
     function saveToFile(fileName_:String):Boolean;
     property xmlDocumentHandler:TXMLDocumentHandler read fXMLDocumentHandler;
     property plans:TPlans read fPlans;
-    property currentPlan:TPlan read fcurrentPlan;
+    property currentPlan:TPlan read fcurrentPlan write fCurrentPlan;
   end;
 
 implementation
@@ -44,6 +44,8 @@ var
   plansNode,planNode,categoryGroupsNode,categoryGroupNode,categoriesNode,categoryNode:TDOMNode;
   planAttributes,categoryGroupsAttributes:TStringArray;
 begin
+  planAttributes:=TStringArray.create;
+  categoryGroupsAttributes:=TStringArray.create;
   setLength(planAttributes,2);
   setLength(categoryGroupsAttributes,2);
   planAttributes[0]:='server_knowledge';
@@ -86,8 +88,60 @@ begin
 end;
 
 procedure TYnab.fromXML;
+var
+  plansNode,planNode,categoryGroupNode,categoryNode:TDOMNode;
+  planEnumerator,categoryGroupEnumerator,categoryEnumerator:TDomNodeEnumerator;
+  newPlan:TPlan;
+  newCategoryGroup:TCategoryGroup;
+  newCategory:TCategory;
+  currentPlanId:string;
 begin
-
+  fPlans.clear;
+  currentPlanId:= xmlDocumentHandler.getNodeTextValue('current-plan');
+  plansNode:= xmlDocumentHandler.getNode('plans');
+  if assigned(plansNode) and (plansNode.GetChildCount > 0) then
+    begin
+    planEnumerator:= plansNode.GetEnumerator;
+    while planEnumerator.MoveNext do
+      begin
+      planNode:=planEnumerator.Current;
+      newPlan:=TPlan.create(
+                            planNode.ChildNodes.Item[0].TextContent,
+                            planNode.ChildNodes[1].TextContent);
+      newPlan.planServerKnowledge:=planNode.Attributes[1].TextContent;
+      if (currentPlanId = planNode.ChildNodes[1].TextContent)
+         then currentPlan:=newPlan;
+      if (planNode.GetChildCount > 0) then
+        begin
+        categoryGroupEnumerator:=planNode.GetEnumerator;
+        while categoryGroupEnumerator.MoveNext do
+          begin
+          categoryGroupNode:=categoryGroupEnumerator.Current;
+          newCategoryGroup:=TCategoryGroup.create(
+                                                  categoryGroupNode.ChildNodes.Item[0].TextContent,
+                                                  categoryGroupNode.ChildNodes.Item[1].TextContent);
+          newPlan.catGroupsServerKnowledge:=categoryGroupNode.Attributes[1].TextContent;
+          if (categoryGroupNode.GetChildCount > 0) then
+             begin
+             categoryEnumerator:=categoryGroupNode.GetEnumerator;
+             while categoryEnumerator.MoveNext do
+               begin
+               categoryNode:=categoryEnumerator.Current;
+               //Should check child nodes.
+               newCategory:=TCategory.create(
+                                             categoryNode.ChildNodes.Item[0].TextContent,
+                                             categoryNode.ChildNodes.Item[1].TextContent,
+                                             categoryNode.ChildNodes.Item[2].TextContent.ToInt64,
+                                             categoryNode.ChildNodes.Item[3].TextContent.ToInt64);
+               newCategoryGroup.categories.push(newCategory);
+               end;
+             end;
+          newPlan.categoryGroups.push(newCategoryGroup);
+          end;
+        end;
+      fPlans.push(newPlan);
+      end;
+    end;
 end;
 
 procedure TYnab.updateData;
