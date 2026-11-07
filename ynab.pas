@@ -20,8 +20,9 @@ type
     procedure toXML;
     procedure fromXML;
     procedure updateData;
-    function getPlansFromServer:TJSONArray;
-    function getCategoriesFromServer(plan:TPlan):TJSONArray;
+    function getPlansFromServer:TYNABResponse;
+    function getPlanFromServer(plan_:TPlan):TYNABResponse;
+    function getCategoriesFromServer(plan:TPlan):TYNABResponse;
     function groupIsValid(catGroupObject_:TJSONObject):boolean;
     public
     constructor create(apiToken_,dataFile_:String);
@@ -91,6 +92,7 @@ end;
 
 procedure TYnab.updateData;
 var
+  currentPlansResponse,currentPlanResponse,categoryGroupsResponse:TYNABResponse;
   currentPlansList,categoryGroupList,categoryList:TJSONArray;
   currentCatGroupObject,currentCategoryObject:TJSONObject;
   index,catGroupIndex,categoryIndex:integer;
@@ -100,13 +102,12 @@ var
   newCategory:TCategory;
 begin
   retrievedPlans:=TPlans.create;
-  currentPlansList:=getPlansFromServer;
-  if not assigned(currentPlansList) then
+  currentPlansResponse:=getPlansFromServer;
+  if (currentPlansResponse.success = false) then
     begin
-    //log an error and exit for now
-    writeln('Retrieval of plans failed');
-    exit;
+    exit; //Log error here
     end;
+  currentPlansList:=TJSONObject(currentPlansResponse.results).Arrays['plans'];
   for index:=0 to pred(currentPlansList.Count) do
     retrievedPlans.push(TPlan.create(currentPlansList[index]));
   //Add missing
@@ -117,16 +118,39 @@ begin
   for index:=0 to pred(Plans.size) do
     if not assigned(retrievedPlans.findById(Plans[index].id))
        then Plans.deleteByIndex(index);
-  //Get categories for each plan
+  //We can get each plan and see if it's changed
   for index:=0 to pred(Plans.size) do
     begin
-    //Get category groups: a JSON array containing category groups and their subcategories
+    currentPlanResponse:=getPlanFromServer(plans[index]);
+    if (currentPlanResponse.success = false) then
+      begin
+      //log an error
+      break;
+      end;
+    if currentPlanResponse.serverKnowledge = plans[index].planServerKnowledge then
+      begin
+      //Log that the plan has not changed
+      break;
+      end;
+    plans[index].planServerKnowledge:=currentPlanResponse.serverKnowledge;
+    //If the server knowledge has changed we need to update the categories for the plan
+    categoryGroupsResponse:=getCategoriesFromServer(Plans[index]);
+    if (categoryGroupsResponse.success = false) then
+      begin
+      //log an error and move on to next plan
+      break;
+      end;
+    if categoryGroupsResponse.serverKnowledge = plans[index].catGroupsServerKnowledge then
+      begin
+      //Log that category groups have not changed
+      break;
+      end;
+    plans[index].catGroupsServerKnowledge:=categoryGroupsResponse.serverKnowledge;
     retrievedCategoryGroups:=TCategoryGroups.create;
-    categoryGroupList:=getCategoriesFromServer(Plans[index]);
+    categoryGroupList:=TJSONObject(categoryGroupsResponse.results).Arrays['category_groups'];
     //For each category group that isn't hidden,internal or deleted
     //See if we already have a record of it
-    if assigned(categoryGroupList) then
-      for catGroupIndex:=0 to pred(categoryGroupList.Count) do
+    for catGroupIndex:=0 to pred(categoryGroupList.Count) do
       begin
       currentCatGroupObject:=TJSONObject(categoryGroupList[catGroupIndex]);
       if (groupIsValid(currentCatGroupObject)) then
@@ -146,36 +170,29 @@ begin
     end;
 end;
 
-function TYnab.getPlansFromServer: TJSONArray;
+function TYnab.getPlansFromServer: TYNABResponse;
 var
   ynabApi: TYnabApi;
-  getPlansResponse:TYnabResponse;
 begin
   ynabApi:=TYNABApi.create(fApiToken);
-  getPlansResponse:=ynabApi.getPlans;
-  if (getPlansResponse.success = true) then
-    begin
-    result:=TJSONObject(getPlansResponse.results).Arrays['plans'];
-    end else
-    begin
-    result:=nil;
-    end;
+  result:=ynabApi.getPlans;
 end;
 
-function TYnab.getCategoriesFromServer(plan:TPlan): TJSONArray;
+function TYnab.getPlanFromServer(plan_:TPlan):TYNABResponse;
 var
   ynabApi: TYnabApi;
-  getCategoriesResponse:TYnabResponse;
 begin
   ynabApi:=TYNABApi.create(fApiToken);
-  getCategoriesResponse:=ynabApi.getCategories(plan.catGroupsServerKnowledge);
-  if (getCategoriesResponse.success = true) then
-    begin
-    result:=TJSONObject(getCategoriesResponse.results).Arrays['category_groups'];
-    end else
-    begin
-    result:=nil;
-    end;
+  result:=ynabApi.getPlan(plan_.id,plan_.planServerKnowledge);
+
+end;
+
+function TYnab.getCategoriesFromServer(plan:TPlan): TYNABResponse;
+var
+  ynabApi: TYnabApi;
+begin
+  ynabApi:=TYNABApi.create(fApiToken);
+  result:=ynabApi.getCategories(plan.id,plan.catGroupsServerKnowledge);
 end;
 
 function TYnab.groupIsValid(catGroupObject_: TJSONObject): boolean;

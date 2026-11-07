@@ -16,10 +16,8 @@ type
     public
     constructor create(apiToken_: string);
     function getPlans: TYNABResponse;
-    function getPlan(planId:string):TYNABResponse;
-    function getPlan(planId:string;serverKnowledge_:string):TYNABResponse;
-    function getCategories(planId:string):TYNABResponse;
-    function getCategories(planId:string;serverKnowledge_:string):TYNABResponse;
+    function getPlan(planId:string;serverKnowledge_:string = ''):TYNABResponse;
+    function getCategories(planId:string;serverKnowledge_:string = ''):TYNABResponse;
   end;
 
 implementation
@@ -49,31 +47,17 @@ begin
   result:=TYNABResponse.create(client.get('/plans'));
 end;
 
-function TYnabApi.getPlan(planId: string): TYNABResponse;
-var
-  client:THttpClient;
-begin
-  client:=getClient;
-  result:=TYNABResponse.create(client.get('/plans/'+planId));
-end;
-
 function TYnabApi.getPlan(planId: string; serverKnowledge_: string
   ): TYNABResponse;
 var
   client:THttpClient;
 begin
   client:=getClient;
-  client.addQueryParam('server_knowledge',serverKnowledge_);
+  if (serverKnowledge_ <> '') then
+  client.addQueryParam('last_knowledge_of_server',serverKnowledge_);
   result:=TYNABResponse.create(client.get('/plans/'+planId));
 end;
 
-function TYnabApi.getCategories(planId: string): TYNABResponse;
-var
-  client:THttpClient;
-begin
-  client:=getClient;
-  result:=TYNABResponse.create(client.get('/plans/'+planId+'/categories'));
-end;
 
 function TYnabApi.getCategories(planId: string; serverKnowledge_: string
   ): TYNABResponse;
@@ -81,7 +65,8 @@ var
   client:THttpClient;
 begin
   client:=getClient;
-  client.addQueryParam('server_knowledge',serverKnowledge_);
+  if (serverKnowledge_ <> '') then
+  client.addQueryParam('last_knowledge_of_server',serverKnowledge_);
   result:=TYNABResponse.create(client.get('/plans/'+planId+'/categories'));
 end;
 

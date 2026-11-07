@@ -130,6 +130,8 @@ constructor TPlan.create(name_,id_: string);
 begin
   fName:=name_;
   fId:=id_;
+  fPlanServerKnowledge:='';
+  fCatGroupsServerKnowledge:='';
 end;
 
 constructor TPlan.create(plan_data_: TJSONData);

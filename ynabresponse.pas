@@ -15,6 +15,7 @@ type
     private
       fErrors:TJSONData;
       fResults:TJSONData;
+      fServerKnowledge:String;
       fSuccess:boolean;
       function getErrors:TJSONData;
       function getResults:TJSONData;
@@ -23,6 +24,7 @@ type
       constructor create(commandResult:TJSONData);
       property errors:TJSONData read getErrors;
       property results:TJSONData read getResults;
+      property serverKnowledge:String read fServerKnowledge;
       property success:boolean read getSuccess;
   end;
 
@@ -50,12 +52,14 @@ begin
   if (commandResult.FindPath('data') <> nil) then
     begin
     fResults:=commandResult.GetPath('data');
+    fServerKnowledge:=commandResult.GetPath('server_knowledge').ToString;
     fErrors:=nil;
     fSuccess:=true;
     end else if (commandResult.FindPath('error') <> nil) then
     begin
     fResults:=nil;
     fErrors:=commandResult.GetPath('error');
+    fServerKnowledge:='';
     fSuccess:=false;
     end;
 end;
