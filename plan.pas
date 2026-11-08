@@ -22,7 +22,6 @@ type
     fCategoryGroups: TCategoryGroups;
     public
     constructor create(name_,id_:string);
-    constructor create(plan_data_:TJSONData);
     property name: string read fName;
     property id: string read fId;
     property categoryGroups:TCategoryGroups read fCategoryGroups write fCategoryGroups;
@@ -134,10 +133,5 @@ begin
   fCatGroupsServerKnowledge:='';
 end;
 
-constructor TPlan.create(plan_data_: TJSONData);
-begin
-  fName:=plan_data_.GetPath('name').AsString;
-  fId:=plan_data_.GetPath('id').AsString;
-end;
 
 end.

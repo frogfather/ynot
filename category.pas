@@ -6,7 +6,7 @@ unit category;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils,changeEvent;
 
 type
 
@@ -16,14 +16,21 @@ type
   private
   fName:string;
   fId:string;
+  fPlanId:string;
+  fCategoryGroupId:string;
   fBudgeted: longInt;
   fActivity: longInt;
+  fCategorySelected:Boolean;
+  fCategoryChanged:TNotifyEvent;
+  procedure setCategorySelection(selection_:boolean);
+  function getCategorySelected:boolean;
   public
-  constructor create(name_,id_:string; budgeted_,activity_:longInt);
+  constructor create(name_,id_,categoryGroupId,planId_:string; budgeted_,activity_:longInt;onCategoryChanged:TNotifyEvent);
   property name: string read fName;
   property id: string read fId;
   property budgeted:longInt read fBudgeted write fBudgeted;
   property activity:longInt read fActivity write fActivity;
+  property categorySelected: boolean read getCategorySelected write setCategorySelection;
   end;
 
   TCategories = array of TCategory;
@@ -35,6 +42,7 @@ type
   function push(element:TCategory):integer;
   function indexOf(element:TCategory):integer;
   function findByName(elementName:string):TCategory;
+  function findById(elementId:string):TCategory;
   procedure clear;
   end;
 
@@ -49,12 +57,29 @@ end;
 
 { TCategory }
 
-constructor TCategory.create(name_, id_: string; budgeted_, activity_: longInt);
+procedure TCategory.setCategorySelection(selection_: boolean);
+var
+  changeEvent_:TChangeEvent;
+begin
+  fCategorySelected:=selection_;
+  changeEvent_:=TChangeEvent.Create(fPlanId,fCategoryGroupId,fId,TChangeType.CAT_SELECTION);
+  fcategoryChanged(changeEvent_);
+end;
+
+function TCategory.getCategorySelected: boolean;
+begin
+  result:=fCategorySelected;
+end;
+
+constructor TCategory.create(name_, id_,categoryGroupId,planId_: string; budgeted_, activity_: longInt;onCategoryChanged:TNotifyEvent);
 begin
   fName:=name_;
   fId:=id_;
+  fCategoryGroupId:=categoryGroupId;
   fbudgeted:=budgeted_;
   fActivity:=activity_;
+  fPlanId:=planId_;
+  fCategoryChanged:=onCategoryChanged;
 end;
 
 { TCategoriesHelper }
@@ -85,7 +110,23 @@ begin
   if (self = nil) or (self.size = 0) then exit; //These are the same thing!
   for index:= 0 to pred(self.size) do
     begin
-      if (Self[index].name = elementName) then
+      if (Self[index].name.Trim = elementName.trim) then
+        begin
+          result:=self[index];
+          exit;
+        end;
+    end;
+end;
+
+function TCategoriesHelper.findById(elementId: string): TCategory;
+var
+  index: integer;
+begin
+  result:=nil;
+  if (self = nil) or (self.size = 0) then exit; //These are the same thing!
+  for index:= 0 to pred(self.size) do
+    begin
+      if (Self[index].id.trim = elementId.trim) then
         begin
           result:=self[index];
           exit;

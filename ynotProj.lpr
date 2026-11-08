@@ -10,7 +10,8 @@ uses
   athreads,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, ynot, ynabApi, plan, ynabResponse, queryParam, categoryGroup, category
+  Forms, ynot, ynabApi, plan, ynabResponse, queryParam, categoryGroup, category,
+  changeEvent
   { you can add units after this };
 
 {$R *.res}

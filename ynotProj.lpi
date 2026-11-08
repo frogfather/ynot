@@ -73,6 +73,11 @@
         <Filename Value="category.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="changeevent.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="changeEvent"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

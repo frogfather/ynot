@@ -5,7 +5,7 @@ unit Ynab;
 interface
 
 uses
-  Classes, SysUtils,fpjson,xml_doc_handler,laz2_DOM,ynabApi,plan,ynabResponse,categoryGroup,category;
+  Classes, SysUtils,fpjson,xml_doc_handler,laz2_DOM,ynabApi,plan,ynabResponse,categoryGroup,category,changeEvent;
 
 type
   
@@ -18,15 +18,17 @@ type
     fApiToken:String;
     fPlans:TPlans;
     fCurrentPlan:TPlan;
+    fDataChanged:TNotifyEvent;
     procedure toXML;
     procedure fromXML;
     procedure updateData;
+    procedure onCategoryDataChanged(sender:TObject);
     function getPlansFromServer:TYNABResponse;
     function getPlanFromServer(plan_:TPlan):TYNABResponse;
     function getCategoriesFromServer(plan:TPlan):TYNABResponse;
     function groupIsValid(catGroupObject_:TJSONObject):boolean;
     public
-    constructor create(apiToken_,dataFile_:String);
+    constructor create(apiToken_,dataFile_:String;onPlanChanged_:TNotifyEvent);
     function loadFromFile(fileName_:String):Boolean;
     function saveToFile(fileName_:String):Boolean;
     property xmlDocumentHandler:TXMLDocumentHandler read fXMLDocumentHandler;
@@ -43,7 +45,7 @@ implementation
 procedure TYnab.toXML;
 var
   planIndex,catGroupindex,categoryIndex:integer;
-  plansNode,planNode,categoryGroupsNode,categoryGroupNode,categoryNode:TDOMNode;
+  plansNode,planNode,categoryGroupsNode,categoryGroupNode,categoriesNode,categoryNode:TDOMNode;
   planAttributes,categoryGroupsAttributes:TStringArray;
   currentPlanId:string;
 begin
@@ -72,7 +74,7 @@ begin
         categoryGroupNode:=createNode('categoryGroup','');
         categoryGroupNode.AppendChild(createNode('name',fplans[planIndex].categoryGroups[catGroupIndex].name));
         categoryGroupNode.AppendChild(createNode('id',fplans[planIndex].categoryGroups[catGroupIndex].id));
-        categoryGroupNode.AppendChild(createNode('categories',''));
+        categoriesNode:=createNode('categories','');
         for categoryIndex:= 0 to pred(fplans[planIndex].categoryGroups[catGroupIndex].categories.size) do
           begin
           categoryNode:=createNode('category','');
@@ -80,8 +82,9 @@ begin
           categoryNode.AppendChild(createNode('id',fplans[planIndex].categoryGroups[catGroupIndex].categories[categoryIndex].id));
           categoryNode.AppendChild(createNode('budgeted',fplans[planIndex].categoryGroups[catGroupIndex].categories[categoryIndex].budgeted.ToString));
           categoryNode.AppendChild(createNode('activity',fplans[planIndex].categoryGroups[catGroupIndex].categories[categoryIndex].activity.ToString));
-          categoryGroupNode.AppendChild(categoryNode);
+          categoriesNode.AppendChild(categoryNode);
           end;
+        categoryGroupNode.AppendChild(categoriesNode);
         categoryGroupsNode.AppendChild(categoryGroupNode);
         end;
       planNode.AppendChild(categoryGroupsNode);
@@ -92,7 +95,10 @@ end;
 
 procedure TYnab.fromXML;
 var
-  plansNode,planNode,categoryGroupNode,categoryNode:TDOMNode;
+  plansNode,planNode,categoryGroupNode,categoryNode,
+    planNameNode,planIdNode,categoryGroupsNode,catGroupNameNode,
+    catGroupIdNode,categoriesNode,categoryNameNode,categoryIdNode,
+    categoryBudgetedNode,categoryActivityNode:TDOMNode;
   planEnumerator,categoryGroupEnumerator,categoryEnumerator:TDomNodeEnumerator;
   newPlan:TPlan;
   newCategoryGroup:TCategoryGroup;
@@ -107,42 +113,52 @@ begin
     planEnumerator:= plansNode.GetEnumerator;
     while planEnumerator.MoveNext do
       begin
+      //Get the child nodes of the plan
       planNode:=planEnumerator.Current;
-      newPlan:=TPlan.create(
-                            planNode.ChildNodes.Item[0].TextContent,
-                            planNode.ChildNodes[1].TextContent);
-      newPlan.planServerKnowledge:=planNode.Attributes[1].TextContent;
+      //should check plan node child count
+      planNameNode:=planNode.ChildNodes[0];
+      planIdNode:=planNode.ChildNodes[1];
+      categoryGroupsNode:=planNode.ChildNodes[2];
+      newPlan:=TPlan.create(planNameNode.TextContent,planIdNode.TextContent);
+      newPlan.planServerKnowledge:=planNode.Attributes.GetNamedItem('server_knowledge').TextContent;
+      newPlan.catGroupsServerKnowledge:=categoryGroupsNode.Attributes.GetNamedItem('server_knowledge').TextContent;
       if (currentPlanId = planNode.ChildNodes[1].TextContent)
          then currentPlan:=newPlan;
-      if (planNode.GetChildCount > 0) then
+
+      categoryGroupEnumerator:=categoryGroupsNode.GetEnumerator;
+      while categoryGroupEnumerator.MoveNext do
         begin
-        categoryGroupEnumerator:=planNode.GetEnumerator;
-        while categoryGroupEnumerator.MoveNext do
+        categoryGroupNode:=categoryGroupEnumerator.Current;
+        //We should have at least 3 children - 0:name, 1:id, 2:categories
+        catGroupNameNode:=categoryGroupNode.ChildNodes[0];
+        catGroupIdNode:=categoryGroupNode.ChildNodes[1];
+        categoriesNode:=categoryGroupNode.ChildNodes[2];
+        newCategoryGroup:=TCategoryGroup.create(
+                                                catGroupNameNode.TextContent,
+                                                catGroupIdNode.TextContent,
+                                                newPlan.id,
+                                                @onCategoryDataChanged);
+        categoryEnumerator:=categoriesNode.GetEnumerator;
+        while categoryEnumerator.MoveNext do
           begin
-          categoryGroupNode:=categoryGroupEnumerator.Current;
-          newCategoryGroup:=TCategoryGroup.create(
-                                                  categoryGroupNode.ChildNodes.Item[0].TextContent,
-                                                  categoryGroupNode.ChildNodes.Item[1].TextContent);
-          newPlan.catGroupsServerKnowledge:=categoryGroupNode.Attributes[1].TextContent;
-          if (categoryGroupNode.GetChildCount > 0) then
-             begin
-             categoryEnumerator:=categoryGroupNode.GetEnumerator;
-             while categoryEnumerator.MoveNext do
-               begin
-               categoryNode:=categoryEnumerator.Current;
-               //Should check child nodes.
-               newCategory:=TCategory.create(
-                                             categoryNode.ChildNodes.Item[0].TextContent,
-                                             categoryNode.ChildNodes.Item[1].TextContent,
-                                             categoryNode.ChildNodes.Item[2].TextContent.ToInt64,
-                                             categoryNode.ChildNodes.Item[3].TextContent.ToInt64);
-               newCategoryGroup.categories.push(newCategory);
-               end;
-             end;
-          newPlan.categoryGroups.push(newCategoryGroup);
+          categoryNode:=categoryEnumerator.Current;
+          categoryNameNode:=categoryNode.ChildNodes[0];
+          categoryIdNode:=categoryNode.ChildNodes[1];
+          categoryBudgetedNode:=categoryNode.ChildNodes[2];
+          categoryActivityNode:=categoryNode.ChildNodes[3];
+          newCategory:=TCategory.create(
+                                        categoryNameNode.TextContent,
+                                        categoryIdNode.TextContent,
+                                        newCategoryGroup.id,
+                                        newPlan.id,
+                                        categoryBudgetedNode.TextContent.ToInt64,
+                                        categoryActivityNode.TextContent.ToInt64,
+                                        @onCategoryDataChanged);
+          newCategoryGroup.categories.push(newCategory);
           end;
+        newPlan.categoryGroups.push(newCategoryGroup);
         end;
-      fPlans.push(newPlan);
+       fPlans.push(newPlan);
       end;
     end;
 end;
@@ -158,6 +174,7 @@ var
   newCategoryGroup:TCategoryGroup;
   newCategory:TCategory;
   planServerKnowledge,catGroupsServerKnowledge:string;
+  planName,planId:string;
   retrievalOK:boolean;
 begin
   retrievalOK:=true;
@@ -169,7 +186,11 @@ begin
     end;
   currentPlansList:=TJSONObject(currentPlansResponse.results).Arrays['plans'];
   for index:=0 to pred(currentPlansList.Count) do
-    retrievedPlans.push(TPlan.create(currentPlansList[index]));
+    begin
+    planName:=TJSONObject(currentPlansList[index]).Get('name');
+    planId:= TJSONObject(currentPlansList[index]).Get('id');
+    retrievedPlans.push(TPlan.create(planName,planId));
+    end;
   //Add missing
   for index:=0 to pred(retrievedPlans.size) do
     if (Plans.findById(retrievedPlans[index].id) = nil)
@@ -224,12 +245,23 @@ begin
       currentCatGroupObject:=TJSONObject(categoryGroupList[catGroupIndex]);
       if (groupIsValid(currentCatGroupObject)) then
         begin
-        newCategoryGroup:=TCategoryGroup.create(currentCatGroupObject.Get('name'),currentCatGroupObject.Get('id'));
+        newCategoryGroup:=TCategoryGroup.create(
+                                                currentCatGroupObject.Get('name'),
+                                                currentCatGroupObject.Get('id'),
+                                                plans[index].id,
+                                                @onCategoryDataChanged);
         categoryList:=currentCatGroupObject.Arrays['categories'];
         for categoryIndex:=0 to pred(categoryList.Count) do
           begin
           currentCategoryObject:=TJSONObject(categoryList[categoryIndex]);
-          newCategory:=TCategory.create(currentCategoryObject.Get('name'),currentCategoryObject.Get('id'),currentCategoryObject.Get('budgeted'),currentCategoryObject.Get('activity'));
+          newCategory:=TCategory.create(
+                                        currentCategoryObject.Get('name'),
+                                        currentCategoryObject.Get('id'),
+                                        newCategoryGroup.id,
+                                        plans[index].id,
+                                        currentCategoryObject.Get('budgeted'),
+                                        currentCategoryObject.Get('activity'),
+                                        @onCategoryDataChanged);
           newCategoryGroup.categories.push(newCategory);
           end;
         retrievedCategoryGroups.push(newCategoryGroup);
@@ -238,6 +270,12 @@ begin
     plans[index].categoryGroups:=retrievedCategoryGroups;
     end;
   if retrievalOK then saveToFile(dataFile);
+end;
+
+procedure TYnab.onCategoryDataChanged(sender: TObject);
+begin
+  fDataChanged(sender);
+  //Fire notify event indicating something has changed
 end;
 
 function TYnab.getPlansFromServer: TYNABResponse;
@@ -286,7 +324,7 @@ begin
   result:=true;
 end;
 
-constructor TYnab.create(apiToken_,dataFile_: String);
+constructor TYnab.create(apiToken_,dataFile_: String;onPlanChanged_:TNotifyEvent);
 begin
   fXMLDocumentHandler:=TXMLDocumentHandler.create('ynot');
   fApiToken:=apiToken_;
@@ -294,6 +332,7 @@ begin
   fPlans:=TPlans.create;
   fCurrentPlan:=nil;
   fDataFile:=dataFile_;
+  fDataChanged:=onPlanChanged_;
   //Call various apis based on server_knowledge
   loadFromFile(dataFile_);
   updateData;

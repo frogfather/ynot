@@ -8,12 +8,38 @@ object Form1: TForm1
   ClientWidth = 684
   OnShow = FormShow
   LCLVersion = '3.6.0.0'
-  object lbPlans: TListBox
+  object cbPlans: TComboBox
     Left = 16
-    Height = 280
-    Top = 72
-    Width = 400
-    ItemHeight = 0
+    Height = 20
+    Top = 40
+    Width = 100
+    ItemHeight = 19
     TabOrder = 0
+    OnChange = cbPlansChange
+  end
+  object lPlans: TLabel
+    Left = 16
+    Height = 16
+    Top = 22
+    Width = 33
+    Caption = 'Plans'
+  end
+  object clbCatGroups: TCheckListBox
+    Left = 16
+    Height = 208
+    Top = 80
+    Width = 344
+    ItemHeight = 0
+    TabOrder = 1
+    OnClickCheck = clbCatGroupsClickCheck
+  end
+  object lbMessages: TListBox
+    Left = 0
+    Height = 80
+    Top = 349
+    Width = 684
+    Align = alBottom
+    ItemHeight = 0
+    TabOrder = 2
   end
 end
