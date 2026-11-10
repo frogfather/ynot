@@ -16,6 +16,7 @@ type
   TXMLDocumentHandler = class(TInterfacedObject)
     private
     fDocument:TXMLDocument;
+    fName:string;
     function findInXML(
       startNode: TDomNode;
       nodeName: string;
@@ -27,7 +28,7 @@ type
     procedure addTextValue(node:TDOMNode; textValue:string);
     public
     constructor create(name_:string);
-    procedure initializeDoc(name_:string);
+    procedure initializeDoc;
     procedure setDocument(doc:TXMLDocument);
     function createNode(
       nodeName:string;
@@ -183,13 +184,14 @@ end;
 
 constructor TXMLDocumentHandler.create(name_:string);
 begin
-  initializeDoc(name_);
+  fName:=name_;
+  initializeDoc;
 end;
 
-procedure TXMLDocumentHandler.initializeDoc(name_:string);
+procedure TXMLDocumentHandler.initializeDoc;
 begin
   fDocument:=TXMLDocument.Create;
-  fDocument.AppendChild(fDocument.CreateElement(name_));
+  fDocument.AppendChild(fDocument.CreateElement(fName));
 end;
 
 

@@ -19,6 +19,7 @@ type
     lPlans: TLabel;
     procedure cbPlansChange(Sender: TObject);
     procedure clbCatGroupsClickCheck(Sender: TObject);
+    procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormShow(Sender: TObject);
     procedure syncCatGroupSelection(groupName_,name_:string;selected_:boolean;changeType:TChangeType);
   private
@@ -142,6 +143,12 @@ begin
          end else lbMessages.Items.insert(0,'Could not find group with name '+currentGroupName);
       end;
     end;
+end;
+
+procedure TForm1.FormClose(Sender: TObject; var CloseAction: TCloseAction);
+begin
+if not assigned(fYnab) then exit;
+fYnab.saveToFile;
 end;
 
 procedure TForm1.populatePlans;

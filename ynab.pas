@@ -29,8 +29,8 @@ type
     function groupIsValid(catGroupObject_:TJSONObject):boolean;
     public
     constructor create(apiToken_,dataFile_:String;onPlanChanged_:TNotifyEvent);
-    function loadFromFile(fileName_:String):Boolean;
-    function saveToFile(fileName_:String):Boolean;
+    function loadFromFile:Boolean;
+    function saveToFile:Boolean;
     property xmlDocumentHandler:TXMLDocumentHandler read fXMLDocumentHandler;
     property dataFile:string read fDataFile;
     property plans:TPlans read fPlans;
@@ -57,6 +57,7 @@ begin
   categoryGroupsAttributes[0]:='server_knowledge';
   with xmlDocumentHandler do
     begin
+    initializeDoc;
     if assigned(currentPlan) then currentPlanId:=currentPlan.id else currentPlanId:='';
     addNode('','current-plan',currentPlanId);
     plansNode:=addNode('','plans');
@@ -269,7 +270,7 @@ begin
       end;
     plans[index].categoryGroups:=retrievedCategoryGroups;
     end;
-  if retrievalOK then saveToFile(dataFile);
+  if retrievalOK then saveToFile;
 end;
 
 procedure TYnab.onCategoryDataChanged(sender: TObject);
@@ -334,26 +335,26 @@ begin
   fDataFile:=dataFile_;
   fDataChanged:=onPlanChanged_;
   //Call various apis based on server_knowledge
-  loadFromFile(dataFile_);
+  loadFromFile;
   updateData;
 end;
 
-function TYnab.loadFromFile(fileName_: String): Boolean;
+function TYnab.loadFromFile: Boolean;
 begin
   result:=false;
-  if fileExists(fileName_) then
+  if fileExists(dataFile) then
     begin
-    xmlDocumentHandler.load(fileName_);
+    xmlDocumentHandler.load(dataFile);
     fromXML;
     result:=true;
     end;
 end;
 
-function TYnab.saveToFile(fileName_: String): Boolean;
+function TYnab.saveToFile: Boolean;
 begin
   result:=false;
   toXML;
-  xmlDocumentHandler.save(fileName_);
+  xmlDocumentHandler.save(dataFile);
   result:=true;
 end;
 
