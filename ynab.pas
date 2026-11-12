@@ -75,6 +75,7 @@ begin
         categoryGroupNode:=createNode('categoryGroup','');
         categoryGroupNode.AppendChild(createNode('name',fplans[planIndex].categoryGroups[catGroupIndex].name));
         categoryGroupNode.AppendChild(createNode('id',fplans[planIndex].categoryGroups[catGroupIndex].id));
+        categoryGroupNode.AppendChild(createNode('selected',fplans[planIndex].categoryGroups[catGroupIndex].GroupSelected.ToString));
         categoriesNode:=createNode('categories','');
         for categoryIndex:= 0 to pred(fplans[planIndex].categoryGroups[catGroupIndex].categories.size) do
           begin
@@ -83,6 +84,7 @@ begin
           categoryNode.AppendChild(createNode('id',fplans[planIndex].categoryGroups[catGroupIndex].categories[categoryIndex].id));
           categoryNode.AppendChild(createNode('budgeted',fplans[planIndex].categoryGroups[catGroupIndex].categories[categoryIndex].budgeted.ToString));
           categoryNode.AppendChild(createNode('activity',fplans[planIndex].categoryGroups[catGroupIndex].categories[categoryIndex].activity.ToString));
+          categoryNode.AppendChild(createNode('selected',fplans[planIndex].categoryGroups[catGroupIndex].categories[categoryIndex].categorySelected.ToString));
           categoriesNode.AppendChild(categoryNode);
           end;
         categoryGroupNode.AppendChild(categoriesNode);
@@ -114,16 +116,14 @@ begin
     planEnumerator:= plansNode.GetEnumerator;
     while planEnumerator.MoveNext do
       begin
-      //Get the child nodes of the plan
       planNode:=planEnumerator.Current;
-      //should check plan node child count
-      planNameNode:=planNode.ChildNodes[0];
-      planIdNode:=planNode.ChildNodes[1];
-      categoryGroupsNode:=planNode.ChildNodes[2];
+      planNameNode:=xmlDocumentHandler.getNode('name',false,planNode);
+      planIdNode:=xmlDocumentHandler.getNode('id',false,planNode);
+      categoryGroupsNode:=xmlDocumentHandler.getNode('categoryGroups',false,planNode);
       newPlan:=TPlan.create(planNameNode.TextContent,planIdNode.TextContent);
       newPlan.planServerKnowledge:=planNode.Attributes.GetNamedItem('server_knowledge').TextContent;
       newPlan.catGroupsServerKnowledge:=categoryGroupsNode.Attributes.GetNamedItem('server_knowledge').TextContent;
-      if (currentPlanId = planNode.ChildNodes[1].TextContent)
+      if (currentPlanId = planIdNode.TextContent)
          then currentPlan:=newPlan;
 
       categoryGroupEnumerator:=categoryGroupsNode.GetEnumerator;
@@ -131,9 +131,9 @@ begin
         begin
         categoryGroupNode:=categoryGroupEnumerator.Current;
         //We should have at least 3 children - 0:name, 1:id, 2:categories
-        catGroupNameNode:=categoryGroupNode.ChildNodes[0];
-        catGroupIdNode:=categoryGroupNode.ChildNodes[1];
-        categoriesNode:=categoryGroupNode.ChildNodes[2];
+        catGroupNameNode:=xmlDocumentHandler.getNode('name',false,categoryGroupNode);
+        catGroupIdNode:=xmlDocumentHandler.getNode('id',false,categoryGroupNode);
+        categoriesNode:=xmlDocumentHandler.getNode('categories',false,categoryGroupNode);
         newCategoryGroup:=TCategoryGroup.create(
                                                 catGroupNameNode.TextContent,
                                                 catGroupIdNode.TextContent,
@@ -143,10 +143,10 @@ begin
         while categoryEnumerator.MoveNext do
           begin
           categoryNode:=categoryEnumerator.Current;
-          categoryNameNode:=categoryNode.ChildNodes[0];
-          categoryIdNode:=categoryNode.ChildNodes[1];
-          categoryBudgetedNode:=categoryNode.ChildNodes[2];
-          categoryActivityNode:=categoryNode.ChildNodes[3];
+          categoryNameNode:=xmlDocumentHandler.getNode('name',false,categoryNode);
+          categoryIdNode:=xmlDocumentHandler.getNode('id',false,categoryNode);
+          categoryBudgetedNode:=xmlDocumentHandler.getNode('budgeted',false,categoryNode);
+          categoryActivityNode:=xmlDocumentHandler.getNode('activity',false,categoryNode);
           newCategory:=TCategory.create(
                                         categoryNameNode.TextContent,
                                         categoryIdNode.TextContent,

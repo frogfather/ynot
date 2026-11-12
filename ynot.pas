@@ -154,13 +154,19 @@ end;
 procedure TForm1.populatePlans;
 var
   planIndex:integer;
+  currentPlanIndex:integer;
 begin
   cbPlans.Clear;
+  currentPlanIndex:=-1;
   if not assigned(fYnab) then exit;
   for planIndex:=0 to pred(fYnab.plans.size) do
     begin
     cbPlans.Items.Add(fYnab.plans[planIndex].name);
+    if fYnab.plans[planIndex].id = fYnab.currentPlan.id
+      then currentPlanIndex:=planIndex;
     end;
+  cbPlans.ItemIndex:=currentPlanIndex;
+  cbPlansChange(cbPlans);
 end;
 //If the category group selected status changes, then the category group itself
 //will change the selected status of all the categories it owns to match
