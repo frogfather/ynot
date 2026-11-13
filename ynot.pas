@@ -98,9 +98,11 @@ procedure TForm1.cbPlansChange(Sender: TObject);
 var
   catGroupIndex,catIndex:integer;
   selectedPlan:TPlan;
+  clbIndex:integer;
 begin
   //First set the current plan
   clbCatGroups.Clear;
+  clbIndex:=0;
   selectedPlan:= fYnab.plans.findByName(cbPlans.Text);
   if not assigned(selectedPlan) then exit;
   fYnab.currentPlan:=selectedPlan;
@@ -108,9 +110,13 @@ begin
   for catGroupIndex:=0 to pred(selectedPlan.categoryGroups.size) do
     begin
     clbCatGroups.Items.Add(fYnab.currentPlan.categoryGroups[catGroupIndex].name);
+    clbCatGroups.Checked[clbIndex]:= (fYnab.currentPlan.categoryGroups[catGroupIndex].GroupSelected);
+    clbIndex:=clbIndex + 1;
     for catIndex:=0 to pred(fYnab.currentPlan.categoryGroups[catGroupindex].categories.size) do
       begin
       clbCatGroups.Items.Add('  '+fYnab.currentPlan.categoryGroups[catGroupIndex].categories[catIndex].name);
+      clbCatGroups.Checked[clbIndex]:= (fYnab.currentPlan.categoryGroups[catGroupIndex].categories[catIndex].categorySelected);
+      clbIndex:=clbIndex + 1;
       end;
     end;
   //Need to save selected info and retain it when syncing.

@@ -100,8 +100,8 @@ procedure TYnab.fromXML;
 var
   plansNode,planNode,categoryGroupNode,categoryNode,
     planNameNode,planIdNode,categoryGroupsNode,catGroupNameNode,
-    catGroupIdNode,categoriesNode,categoryNameNode,categoryIdNode,
-    categoryBudgetedNode,categoryActivityNode:TDOMNode;
+    catGroupIdNode,categoriesNode,categoryGroupSelectedNode,categoryNameNode,categoryIdNode,
+    categoryBudgetedNode,categoryActivityNode,categorySelectedNode:TDOMNode;
   planEnumerator,categoryGroupEnumerator,categoryEnumerator:TDomNodeEnumerator;
   newPlan:TPlan;
   newCategoryGroup:TCategoryGroup;
@@ -130,10 +130,10 @@ begin
       while categoryGroupEnumerator.MoveNext do
         begin
         categoryGroupNode:=categoryGroupEnumerator.Current;
-        //We should have at least 3 children - 0:name, 1:id, 2:categories
         catGroupNameNode:=xmlDocumentHandler.getNode('name',false,categoryGroupNode);
         catGroupIdNode:=xmlDocumentHandler.getNode('id',false,categoryGroupNode);
         categoriesNode:=xmlDocumentHandler.getNode('categories',false,categoryGroupNode);
+        categoryGroupSelectedNode:=xmlDocumentHandler.getNode('selected',false,categoryGroupNode);
         newCategoryGroup:=TCategoryGroup.create(
                                                 catGroupNameNode.TextContent,
                                                 catGroupIdNode.TextContent,
@@ -147,6 +147,7 @@ begin
           categoryIdNode:=xmlDocumentHandler.getNode('id',false,categoryNode);
           categoryBudgetedNode:=xmlDocumentHandler.getNode('budgeted',false,categoryNode);
           categoryActivityNode:=xmlDocumentHandler.getNode('activity',false,categoryNode);
+          categorySelectedNode:=xmlDocumentHandler.getNode('selected',false,categoryNode);
           newCategory:=TCategory.create(
                                         categoryNameNode.TextContent,
                                         categoryIdNode.TextContent,
@@ -155,8 +156,10 @@ begin
                                         categoryBudgetedNode.TextContent.ToInt64,
                                         categoryActivityNode.TextContent.ToInt64,
                                         @onCategoryDataChanged);
+          newCategory.categorySelected:=categorySelectedNode.TextContent.ToBoolean;
           newCategoryGroup.categories.push(newCategory);
           end;
+        newCategoryGroup.GroupSelected:=categoryGroupSelectedNode.TextContent.ToBoolean;
         newPlan.categoryGroups.push(newCategoryGroup);
         end;
        fPlans.push(newPlan);
@@ -171,12 +174,13 @@ var
   currentCatGroupObject,currentCategoryObject:TJSONObject;
   index,catGroupIndex,categoryIndex:integer;
   retrievedPlans:TPlans;
-  retrievedCategoryGroups:TCategoryGroups;
-  newCategoryGroup:TCategoryGroup;
-  newCategory:TCategory;
+  thisCategoryGroup:TCategoryGroup;
+  thisCategory:TCategory;
   planServerKnowledge,catGroupsServerKnowledge:string;
   planName,planId:string;
   retrievalOK:boolean;
+  sBudgeted,sActivity:string;
+  lBudgeted,lActivity:Int64;
 begin
   retrievalOK:=true;
   retrievedPlans:=TPlans.create;
@@ -215,8 +219,9 @@ begin
         planServerKnowledge:=currentPlanResponse.results.GetPath('server_knowledge').AsString;
         if (plans[index].planServerKnowledge = planServerKnowledge) then
         begin
-        //Log that the plan has not changed
-        break;
+        //Proper logging would be nice
+        writeln('Plan '+plans[index].name+' has not changed.');
+        continue;
         end;
       end;
     plans[index].planServerKnowledge:=planServerKnowledge;
@@ -232,12 +237,11 @@ begin
       catGroupsServerKnowledge:=categoryGroupsResponse.results.GetPath('server_knowledge').AsString;
     if catGroupsServerKnowledge = plans[index].catGroupsServerKnowledge then
         begin
-        //Log that category groups have not changed
-        break;
+        writeln('Category groups of plan '+plans[index].name+' have not changed.');;
+        continue;
         end;
       end;
     plans[index].catGroupsServerKnowledge:=catGroupsServerKnowledge;
-    retrievedCategoryGroups:=TCategoryGroups.create;
     categoryGroupList:=TJSONObject(categoryGroupsResponse.results).Arrays['category_groups'];
     //For each category group that isn't hidden,internal or deleted
     //See if we already have a record of it
@@ -246,29 +250,48 @@ begin
       currentCatGroupObject:=TJSONObject(categoryGroupList[catGroupIndex]);
       if (groupIsValid(currentCatGroupObject)) then
         begin
-        newCategoryGroup:=TCategoryGroup.create(
-                                                currentCatGroupObject.Get('name'),
-                                                currentCatGroupObject.Get('id'),
-                                                plans[index].id,
-                                                @onCategoryDataChanged);
+        //If we don't have this category group then create it otherwise update the categories
+        thisCategoryGroup:=plans[index].categoryGroups.findById(currentCatGroupObject.Get('id'));
+        if not assigned(thisCategoryGroup)
+           then
+             begin
+             thisCategoryGroup:=TCategoryGroup.create(
+                                                      currentCatGroupObject.Get('name'),
+                                                      currentCatGroupObject.Get('id'),
+                                                      plans[index].id,
+                                                      @onCategoryDataChanged);
+             plans[index].categoryGroups.push(thisCategoryGroup);
+             end;
         categoryList:=currentCatGroupObject.Arrays['categories'];
         for categoryIndex:=0 to pred(categoryList.Count) do
           begin
           currentCategoryObject:=TJSONObject(categoryList[categoryIndex]);
-          newCategory:=TCategory.create(
+          thisCategory:=thisCategoryGroup.categories.findById(currentCategoryObject.Get('id'));
+          if not assigned(thisCategory)
+             then
+               begin
+               thisCategory:=TCategory.create(
                                         currentCategoryObject.Get('name'),
                                         currentCategoryObject.Get('id'),
-                                        newCategoryGroup.id,
+                                        thisCategoryGroup.id,
                                         plans[index].id,
-                                        currentCategoryObject.Get('budgeted'),
-                                        currentCategoryObject.Get('activity'),
+                                        currentCategoryObject.Get('budgeted').ToInt64,
+                                        currentCategoryObject.Get('activity').ToInt64,
                                         @onCategoryDataChanged);
-          newCategoryGroup.categories.push(newCategory);
+               thisCategoryGroup.categories.push(thisCategory);
+               end else
+               begin
+               //For testing - try to simplify this
+               sBudgeted:=currentCategoryObject.Get('budgeted');
+               lBudgeted:=sBudgeted.ToInt64;
+               sActivity:=currentCategoryObject.Get('activity');
+               lActivity:=sActivity.ToInt64;
+               thisCategory.budgeted:=lBudgeted;
+               thisCategory.activity:=lActivity;
+               end;
           end;
-        retrievedCategoryGroups.push(newCategoryGroup);
         end;
       end;
-    plans[index].categoryGroups:=retrievedCategoryGroups;
     end;
   if retrievalOK then saveToFile;
 end;
